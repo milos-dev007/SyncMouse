@@ -2,10 +2,14 @@
 
 #include <QMainWindow>
 
+#include "core/ClientPosition.h"
+
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
 class QPlainTextEdit;
+class QLabel;
+class QSlider;
 class QSpinBox;
 class QTableWidget;
 class QPushButton;
@@ -19,8 +23,6 @@ class InputInjector;
 class InputShareController;
 class PeerConnection;
 class Server;
-
-enum class ClientPosition;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -68,6 +70,8 @@ private:
   QPushButton* clientToggleButton_ = nullptr;
   QPushButton* clientSendFileButton_ = nullptr;
   QCheckBox* clientClipboardCheck_ = nullptr;
+  QSlider* clientMouseSpeed_ = nullptr;
+  QLabel* clientMouseSpeedValue_ = nullptr;
 
   QPlainTextEdit* log_ = nullptr;
 

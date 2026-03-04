@@ -3,19 +3,13 @@
 #include <QObject>
 #include <QVector>
 
+#include "core/ClientPosition.h"
+
 class QTcpServer;
 
 namespace syncmouse {
 
 class PeerConnection;
-
-enum class ClientPosition {
-  Left,
-  Right,
-  Up,
-  Down,
-  Unknown
-};
 
 struct ClientInfo {
   PeerConnection* peer = nullptr;

@@ -171,6 +171,17 @@ void InputShareController::onClientDisconnected(PeerConnection* peer) {
   }
 }
 
+void InputShareController::requestReturn(PeerConnection* peer) {
+  if (!remoteActive_) {
+    return;
+  }
+  if (peer && peer != activePeer_) {
+    return;
+  }
+  exitRemote();
+  emit logMessage(QStringLiteral("Input sharing stopped (client return)."));
+}
+
 InputShareController::Edge InputShareController::edgeForPosition(const QPoint& pos) const {
   QScreen* screen = QGuiApplication::primaryScreen();
   if (!screen) {
@@ -236,7 +247,7 @@ void InputShareController::enterRemote(PeerConnection* peer, Edge edge) {
     capture_->warpCursorTo(clamp);
   }
 
-  emit logMessage(QStringLiteral("Input sharing started. Press Ctrl+Shift+Q to return."));
+  emit logMessage(QStringLiteral("Input sharing started. Move to server edge or press Ctrl+Shift+Q to return."));
 }
 
 void InputShareController::exitRemote() {

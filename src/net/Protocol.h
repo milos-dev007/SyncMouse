@@ -16,7 +16,8 @@ enum class MessageType : quint16 {
   ClientHello = 6,
   ServerHello = 7,
   InputEvent = 8,
-  ConfigUpdate = 9
+  ConfigUpdate = 9,
+  ControlReturn = 10
 };
 
 struct FrameHeader {

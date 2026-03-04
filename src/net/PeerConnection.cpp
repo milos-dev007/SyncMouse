@@ -16,6 +16,10 @@ namespace {
 constexpr qint64 kHeaderSize = 4 + 2 + 2 + 8;
 constexpr qint64 kFileChunkSize = 64 * 1024;
 
+enum class ConfigKey : quint8 {
+  ClientPosition = 1
+};
+
 int streamVersion() {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
   return QDataStream::Qt_6_0;
@@ -110,6 +114,19 @@ bool PeerConnection::sendFile(const QString& path, QString* error) {
 
 void PeerConnection::sendInputEvent(const InputEvent& event) {
   sendMessage(MessageType::InputEvent, serializeInputEvent(event));
+}
+
+void PeerConnection::sendClientPosition(ClientPosition position) {
+  QByteArray payload;
+  QDataStream out(&payload, QIODevice::WriteOnly);
+  out.setVersion(streamVersion());
+  out << static_cast<quint8>(ConfigKey::ClientPosition);
+  out << static_cast<quint8>(position);
+  sendMessage(MessageType::ConfigUpdate, payload);
+}
+
+void PeerConnection::sendReturnControl() {
+  sendMessage(MessageType::ControlReturn, QByteArray());
 }
 
 void PeerConnection::onReadyRead() {
@@ -217,6 +234,27 @@ bool PeerConnection::handleMessage(MessageType type, const QByteArray& payload) 
       }
       return false;
     }
+    case MessageType::ConfigUpdate: {
+      if (payload.size() < 2) {
+        return false;
+      }
+      QByteArray buffer = payload;
+      QDataStream in(&buffer, QIODevice::ReadOnly);
+      in.setVersion(streamVersion());
+      quint8 key = 0;
+      in >> key;
+      if (static_cast<ConfigKey>(key) == ConfigKey::ClientPosition) {
+        quint8 pos = 0;
+        in >> pos;
+        emit clientPositionReceived(static_cast<ClientPosition>(pos));
+        return true;
+      }
+      emit logMessage(QString("Unknown config update %1").arg(key));
+      return false;
+    }
+    case MessageType::ControlReturn:
+      emit returnControlRequested(this);
+      return true;
     default:
       emit logMessage(QString("Unhandled message type %1").arg(static_cast<int>(type)));
       return false;

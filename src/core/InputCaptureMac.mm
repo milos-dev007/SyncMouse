@@ -46,6 +46,7 @@ bool InputCaptureMac::start(QString* error) {
                      CGEventMaskBit(kCGEventRightMouseDragged) |
                      CGEventMaskBit(kCGEventOtherMouseDragged) |
                      CGEventMaskBit(kCGEventScrollWheel) |
+                     CGEventMaskBit(kCGEventFlagsChanged) |
                      CGEventMaskBit(kCGEventKeyDown) |
                      CGEventMaskBit(kCGEventKeyUp);
 
@@ -120,13 +121,15 @@ CGEventRef InputCaptureMac::handleEvent(CGEventType type, CGEventRef event) {
       type == kCGEventLeftMouseDragged ||
       type == kCGEventRightMouseDragged ||
       type == kCGEventOtherMouseDragged) {
-    if (ignoreNextMove_) {
-      ignoreNextMove_ = false;
-      return suppress_ ? nullptr : event;
-    }
-
     CGPoint location = CGEventGetLocation(event);
     QPoint pos(static_cast<int>(location.x), screenHeight_ - 1 - static_cast<int>(location.y));
+
+    if (ignoreNextMove_) {
+      ignoreNextMove_ = false;
+      lastPos_ = pos;
+      hasLastPos_ = true;
+      return suppress_ ? nullptr : event;
+    }
 
     int rawDx = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaX));
     int rawDy = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaY));
@@ -169,6 +172,46 @@ CGEventRef InputCaptureMac::handleEvent(CGEventType type, CGEventRef event) {
     int deltaY = static_cast<int>(CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1)) * 120;
     int deltaX = static_cast<int>(CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis2)) * 120;
     emit mouseWheel(deltaX, deltaY);
+    return suppress_ ? nullptr : event;
+  }
+
+  if (type == kCGEventFlagsChanged) {
+    const auto keycode = static_cast<quint16>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
+    quint16 usage = usageFromPlatformKeycode(keycode);
+    if (usage == 0) {
+      return suppress_ ? nullptr : event;
+    }
+
+    CGEventFlags flags = CGEventGetFlags(event);
+    bool down = false;
+    switch (usage) {
+      case 0xE0:
+      case 0xE4:
+        down = (flags & kCGEventFlagMaskControl);
+        break;
+      case 0xE1:
+      case 0xE5:
+        down = (flags & kCGEventFlagMaskShift);
+        break;
+      case 0xE2:
+      case 0xE6:
+        down = (flags & kCGEventFlagMaskAlternate);
+        break;
+      case 0xE3:
+      case 0xE7:
+        down = (flags & kCGEventFlagMaskCommand);
+        break;
+      default:
+        break;
+    }
+
+    quint16 modifiers = 0;
+    if (flags & kCGEventFlagMaskShift) modifiers |= ModShift;
+    if (flags & kCGEventFlagMaskControl) modifiers |= ModCtrl;
+    if (flags & kCGEventFlagMaskAlternate) modifiers |= ModAlt;
+    if (flags & kCGEventFlagMaskCommand) modifiers |= ModMeta;
+
+    emit keyEvent(usage, modifiers, down);
     return suppress_ ? nullptr : event;
   }
 

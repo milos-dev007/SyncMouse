@@ -1,6 +1,7 @@
 #include "gui/MainWindow.h"
 
 #include "core/ClipboardSync.h"
+#include "core/ClientPosition.h"
 #include "core/InputInjector.h"
 #include "core/InputShareController.h"
 #include "net/Client.h"
@@ -18,6 +19,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSlider>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QTableWidget>
@@ -31,6 +33,23 @@
 #endif
 
 namespace syncmouse {
+
+namespace {
+InputInjector::ReturnEdge returnEdgeForPosition(ClientPosition position) {
+  switch (position) {
+    case ClientPosition::Left:
+      return InputInjector::ReturnEdge::Right;
+    case ClientPosition::Right:
+      return InputInjector::ReturnEdge::Left;
+    case ClientPosition::Up:
+      return InputInjector::ReturnEdge::Down;
+    case ClientPosition::Down:
+      return InputInjector::ReturnEdge::Up;
+    default:
+      return InputInjector::ReturnEdge::None;
+  }
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent),
@@ -71,6 +90,9 @@ MainWindow::MainWindow(QWidget* parent)
     clientToggleButton_->setText(QStringLiteral("Connect"));
     clientHost_->setEnabled(true);
     clientPort_->setEnabled(true);
+    if (inputInjector_) {
+      inputInjector_->setReturnEdge(InputInjector::ReturnEdge::None);
+    }
   });
   connect(client_, &Client::logMessage, this, &MainWindow::onClientLogMessage);
 
@@ -90,6 +112,17 @@ MainWindow::MainWindow(QWidget* parent)
     connect(client_->peer(), &PeerConnection::inputEventReceived, this, [this](const InputEvent& ev) {
       inputInjector_->inject(ev);
     });
+    connect(client_->peer(), &PeerConnection::clientPositionReceived, this, [this](ClientPosition position) {
+      inputInjector_->setReturnEdge(returnEdgeForPosition(position));
+    });
+    connect(inputInjector_, &InputInjector::returnRequested, this, [this]() {
+      if (client_->isConnected()) {
+        client_->peer()->sendReturnControl();
+      }
+    });
+    if (clientMouseSpeed_) {
+      inputInjector_->setMouseScale(static_cast<double>(clientMouseSpeed_->value()) / 100.0);
+    }
   }
 }
 
@@ -133,7 +166,7 @@ QWidget* MainWindow::buildServerTab() {
   serverInputCheck_->setChecked(false);
   layout->addWidget(serverInputCheck_);
 
-  auto* hotkeyLabel = new QLabel(QStringLiteral("Return hotkey: Ctrl+Shift+Q"), tab);
+  auto* hotkeyLabel = new QLabel(QStringLiteral("Return: move to server edge or press Ctrl+Shift+Q"), tab);
   layout->addWidget(hotkeyLabel);
 
   connect(serverToggleButton_, &QPushButton::clicked, this, &MainWindow::onStartStopServer);
@@ -183,8 +216,26 @@ QWidget* MainWindow::buildClientTab() {
   clientClipboardCheck_->setChecked(true);
   layout->addWidget(clientClipboardCheck_);
 
+  auto* speedRow = new QHBoxLayout();
+  speedRow->addWidget(new QLabel(QStringLiteral("Mouse speed:"), tab));
+  clientMouseSpeed_ = new QSlider(Qt::Horizontal, tab);
+  clientMouseSpeed_->setRange(50, 200);
+  clientMouseSpeed_->setValue(100);
+  speedRow->addWidget(clientMouseSpeed_);
+  clientMouseSpeedValue_ = new QLabel(QStringLiteral("100%"), tab);
+  speedRow->addWidget(clientMouseSpeedValue_);
+  layout->addLayout(speedRow);
+
   connect(clientToggleButton_, &QPushButton::clicked, this, &MainWindow::onConnectDisconnectClient);
   connect(clientSendFileButton_, &QPushButton::clicked, this, &MainWindow::onSendFileFromClient);
+  connect(clientMouseSpeed_, &QSlider::valueChanged, this, [this](int value) {
+    if (inputInjector_) {
+      inputInjector_->setMouseScale(static_cast<double>(value) / 100.0);
+    }
+    if (clientMouseSpeedValue_) {
+      clientMouseSpeedValue_->setText(QStringLiteral("%1%").arg(value));
+    }
+  });
 
   return tab;
 }
@@ -283,6 +334,7 @@ void MainWindow::onClientConnected(PeerConnection* peer) {
   connect(peer, &PeerConnection::clipboardTextReceived, this, &MainWindow::onClipboardTextReceived);
   connect(peer, &PeerConnection::fileReceived, this, &MainWindow::onClientFileReceived);
   connect(peer, &PeerConnection::logMessage, this, &MainWindow::onClientLogMessage);
+  connect(peer, &PeerConnection::returnControlRequested, inputShare_, &InputShareController::requestReturn);
 }
 
 void MainWindow::onClientDisconnected(PeerConnection* peer) {

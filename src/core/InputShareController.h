@@ -24,6 +24,9 @@ public:
 signals:
   void logMessage(const QString& message);
 
+public slots:
+  void requestReturn(syncmouse::PeerConnection* peer);
+
 private slots:
   void onMouseMoved(const QPoint& pos, const QPoint& delta);
   void onMouseButton(syncmouse::MouseButton button, bool down);

@@ -79,6 +79,18 @@ constexpr quint16 kVK_F9 = 0x65;
 constexpr quint16 kVK_F10 = 0x6D;
 constexpr quint16 kVK_F11 = 0x67;
 constexpr quint16 kVK_F12 = 0x6F;
+constexpr quint16 kVK_F13 = 0x69;
+constexpr quint16 kVK_F14 = 0x6B;
+constexpr quint16 kVK_F15 = 0x71;
+constexpr quint16 kVK_F16 = 0x6A;
+constexpr quint16 kVK_F17 = 0x40;
+constexpr quint16 kVK_F18 = 0x4F;
+constexpr quint16 kVK_F19 = 0x50;
+constexpr quint16 kVK_F20 = 0x5A;
+constexpr quint16 kVK_F21 = 0x5B;
+constexpr quint16 kVK_F22 = 0x5C;
+constexpr quint16 kVK_F23 = 0x5D;
+constexpr quint16 kVK_F24 = 0x5E;
 
 constexpr quint16 kVK_Help = 0x72;
 constexpr quint16 kVK_Home = 0x73;
@@ -136,6 +148,9 @@ static const MapEntry kMap[] = {
   {0x3A, kVK_F1}, {0x3B, kVK_F2}, {0x3C, kVK_F3}, {0x3D, kVK_F4},
   {0x3E, kVK_F5}, {0x3F, kVK_F6}, {0x40, kVK_F7}, {0x41, kVK_F8},
   {0x42, kVK_F9}, {0x43, kVK_F10}, {0x44, kVK_F11}, {0x45, kVK_F12},
+  {0x68, kVK_F13}, {0x69, kVK_F14}, {0x6A, kVK_F15}, {0x6B, kVK_F16},
+  {0x6C, kVK_F17}, {0x6D, kVK_F18}, {0x6E, kVK_F19}, {0x6F, kVK_F20},
+  {0x70, kVK_F21}, {0x71, kVK_F22}, {0x72, kVK_F23}, {0x73, kVK_F24},
 
   {0x49, kVK_Help},
   {0x4A, kVK_Home},
@@ -197,6 +212,9 @@ static const MapEntry kMap[] = {
   {0x3A, VK_F1}, {0x3B, VK_F2}, {0x3C, VK_F3}, {0x3D, VK_F4},
   {0x3E, VK_F5}, {0x3F, VK_F6}, {0x40, VK_F7}, {0x41, VK_F8},
   {0x42, VK_F9}, {0x43, VK_F10}, {0x44, VK_F11}, {0x45, VK_F12},
+  {0x68, VK_F13}, {0x69, VK_F14}, {0x6A, VK_F15}, {0x6B, VK_F16},
+  {0x6C, VK_F17}, {0x6D, VK_F18}, {0x6E, VK_F19}, {0x6F, VK_F20},
+  {0x70, VK_F21}, {0x71, VK_F22}, {0x72, VK_F23}, {0x73, VK_F24},
 
   {0x49, VK_INSERT},
   {0x4A, VK_HOME},

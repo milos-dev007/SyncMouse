@@ -63,6 +63,9 @@ void Server::setClientPosition(PeerConnection* peer, ClientPosition position) {
   for (ClientInfo& info : clients_) {
     if (info.peer == peer) {
       info.position = position;
+      if (info.peer) {
+        info.peer->sendClientPosition(position);
+      }
       emit logMessage(QString("Client %1 position set to %2")
         .arg(peer->peerId())
         .arg(static_cast<int>(position)));

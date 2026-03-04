@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QString>
 
+#include "core/ClientPosition.h"
 #include "core/InputEvent.h"
 
 class QFile;
@@ -27,12 +28,16 @@ public:
   void sendClipboardText(const QString& text);
   bool sendFile(const QString& path, QString* error = nullptr);
   void sendInputEvent(const syncmouse::InputEvent& event);
+  void sendClientPosition(syncmouse::ClientPosition position);
+  void sendReturnControl();
 
 signals:
   void disconnected(syncmouse::PeerConnection* peer);
   void clipboardTextReceived(const QString& text);
   void fileReceived(const QString& path);
   void inputEventReceived(const syncmouse::InputEvent& event);
+  void clientPositionReceived(syncmouse::ClientPosition position);
+  void returnControlRequested(syncmouse::PeerConnection* peer);
   void logMessage(const QString& message);
 
 private slots:

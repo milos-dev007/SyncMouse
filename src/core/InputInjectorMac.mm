@@ -2,6 +2,8 @@
 
 #include "core/KeyMap.h"
 
+#include <cmath>
+
 namespace syncmouse {
 
 InputInjectorMac::InputInjectorMac(QObject* parent)
@@ -49,19 +51,27 @@ void InputInjectorMac::inject(const InputEvent& event) {
   switch (event.type) {
     case InputEventType::MouseMove: {
       CGPoint current = currentCursorPosition();
+      const int screenWidth = static_cast<int>(CGDisplayPixelsWide(CGMainDisplayID()));
       const int screenHeight = static_cast<int>(CGDisplayPixelsHigh(CGMainDisplayID()));
 
       CGPoint target;
-      target.x = current.x + event.dx;
-      target.y = current.y - event.dy; // convert Qt (down) to CG (up)
+      const double dx = event.dx * mouseScale_;
+      const double dy = event.dy * mouseScale_;
+      target.x = current.x + std::lround(dx);
+      target.y = current.y - std::lround(dy); // convert Qt (down) to CG (up)
 
       if (target.x < 0) target.x = 0;
       if (target.y < 0) target.y = 0;
-      if (target.x > CGDisplayPixelsWide(CGMainDisplayID()) - 1) {
-        target.x = CGDisplayPixelsWide(CGMainDisplayID()) - 1;
+      if (screenWidth > 0 && target.x > screenWidth - 1) {
+        target.x = screenWidth - 1;
       }
-      if (target.y > screenHeight - 1) {
+      if (screenHeight > 0 && target.y > screenHeight - 1) {
         target.y = screenHeight - 1;
+      }
+
+      if (screenWidth > 0 && screenHeight > 0) {
+        maybeRequestReturn(static_cast<int>(target.x), static_cast<int>(target.y),
+                           0, 0, screenWidth - 1, screenHeight - 1, false);
       }
 
       CGEventRef move = CGEventCreateMouseEvent(nullptr, kCGEventMouseMoved, target, kCGMouseButtonLeft);

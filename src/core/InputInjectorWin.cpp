@@ -2,6 +2,8 @@
 
 #include "core/KeyMap.h"
 
+#include <cmath>
+
 namespace syncmouse {
 
 InputInjectorWin::InputInjectorWin(QObject* parent)
@@ -67,6 +69,52 @@ void InputInjectorWin::sendKey(quint16 vk, bool down) {
   SendInput(1, &input, sizeof(INPUT));
 }
 
+void InputInjectorWin::sendAbsoluteMove(int dx, int dy) {
+  if (!hasPos_) {
+    POINT pt;
+    if (GetCursorPos(&pt)) {
+      cursorX_ = pt.x;
+      cursorY_ = pt.y;
+      hasPos_ = true;
+    } else {
+      cursorX_ = 0;
+      cursorY_ = 0;
+      hasPos_ = true;
+    }
+  }
+
+  cursorX_ += dx;
+  cursorY_ += dy;
+
+  const int vLeft = GetSystemMetrics(SM_XVIRTUALSCREEN);
+  const int vTop = GetSystemMetrics(SM_YVIRTUALSCREEN);
+  const int vWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+  const int vHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+  if (vWidth <= 1 || vHeight <= 1) {
+    return;
+  }
+
+  if (cursorX_ < vLeft) cursorX_ = vLeft;
+  if (cursorY_ < vTop) cursorY_ = vTop;
+  if (cursorX_ > vLeft + vWidth - 1) cursorX_ = vLeft + vWidth - 1;
+  if (cursorY_ > vTop + vHeight - 1) cursorY_ = vTop + vHeight - 1;
+
+  maybeRequestReturn(static_cast<int>(std::lround(cursorX_)),
+                     static_cast<int>(std::lround(cursorY_)),
+                     vLeft, vTop, vLeft + vWidth - 1, vTop + vHeight - 1, true);
+
+  const double nx = (cursorX_ - vLeft) * 65535.0 / (vWidth - 1);
+  const double ny = (cursorY_ - vTop) * 65535.0 / (vHeight - 1);
+
+  INPUT input = {};
+  input.type = INPUT_MOUSE;
+  input.mi.dx = static_cast<LONG>(std::lround(nx));
+  input.mi.dy = static_cast<LONG>(std::lround(ny));
+  input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
+  SendInput(1, &input, sizeof(INPUT));
+}
+
 void InputInjectorWin::inject(const InputEvent& event) {
   if (!enabled_) {
     return;
@@ -74,12 +122,9 @@ void InputInjectorWin::inject(const InputEvent& event) {
 
   switch (event.type) {
     case InputEventType::MouseMove: {
-      INPUT input = {};
-      input.type = INPUT_MOUSE;
-      input.mi.dx = event.dx;
-      input.mi.dy = event.dy;
-      input.mi.dwFlags = MOUSEEVENTF_MOVE;
-      SendInput(1, &input, sizeof(INPUT));
+      const int dx = static_cast<int>(std::lround(event.dx * mouseScale_));
+      const int dy = static_cast<int>(std::lround(event.dy * mouseScale_));
+      sendAbsoluteMove(dx, dy);
       break;
     }
     case InputEventType::MouseButton: {
