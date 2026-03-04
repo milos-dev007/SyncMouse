@@ -128,8 +128,10 @@ CGEventRef InputCaptureMac::handleEvent(CGEventType type, CGEventRef event) {
     CGPoint location = CGEventGetLocation(event);
     QPoint pos(static_cast<int>(location.x), screenHeight_ - 1 - static_cast<int>(location.y));
 
-    QPoint delta(0, 0);
-    if (hasLastPos_) {
+    int rawDx = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaX));
+    int rawDy = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaY));
+    QPoint delta(rawDx, rawDy);
+    if (delta.isNull() && hasLastPos_) {
       delta = pos - lastPos_;
     }
     lastPos_ = pos;

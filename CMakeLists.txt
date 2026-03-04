@@ -78,4 +78,7 @@ if (WIN32)
     src/core/InputInjectorWin.cpp
   )
   target_link_libraries(SyncMouse PRIVATE user32)
+  set_target_properties(SyncMouse PROPERTIES
+    WIN32_EXECUTABLE TRUE
+  )
 endif()
