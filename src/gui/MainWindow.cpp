@@ -1,6 +1,8 @@
 #include "gui/MainWindow.h"
 
 #include "core/ClipboardSync.h"
+#include "core/InputInjector.h"
+#include "core/InputShareController.h"
 #include "net/Client.h"
 #include "net/PeerConnection.h"
 #include "net/Server.h"
@@ -22,13 +24,20 @@
 #include <QVariant>
 #include <QVBoxLayout>
 
+#if defined(Q_OS_MAC)
+#include "core/InputInjectorMac.h"
+#elif defined(Q_OS_WIN)
+#include "core/InputInjectorWin.h"
+#endif
+
 namespace syncmouse {
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent),
     server_(new Server(this)),
     client_(new Client(this)),
-    clipboard_(new ClipboardSync(this)) {
+    clipboard_(new ClipboardSync(this)),
+    inputShare_(new InputShareController(server_, this)) {
   setWindowTitle(QStringLiteral("SyncMouse"));
   resize(900, 600);
 
@@ -51,6 +60,7 @@ MainWindow::MainWindow(QWidget* parent)
   connect(server_, &Server::clientConnected, this, &MainWindow::onClientConnected);
   connect(server_, &Server::clientDisconnected, this, &MainWindow::onClientDisconnected);
   connect(server_, &Server::logMessage, this, &MainWindow::onClientLogMessage);
+  connect(inputShare_, &InputShareController::logMessage, this, &MainWindow::onClientLogMessage);
 
   connect(client_, &Client::connected, this, [this]() {
     clientToggleButton_->setText(QStringLiteral("Disconnect"));
@@ -67,6 +77,20 @@ MainWindow::MainWindow(QWidget* parent)
   connect(clipboard_, &ClipboardSync::localClipboardChanged, this, &MainWindow::onLocalClipboardChanged);
   connect(client_->peer(), &PeerConnection::clipboardTextReceived, this, &MainWindow::onClipboardTextReceived);
   connect(client_->peer(), &PeerConnection::fileReceived, this, &MainWindow::onClientFileReceived);
+
+#if defined(Q_OS_MAC)
+  inputInjector_ = new InputInjectorMac(this);
+#elif defined(Q_OS_WIN)
+  inputInjector_ = new InputInjectorWin(this);
+#else
+  inputInjector_ = nullptr;
+#endif
+
+  if (inputInjector_) {
+    connect(client_->peer(), &PeerConnection::inputEventReceived, this, [this](const InputEvent& ev) {
+      inputInjector_->inject(ev);
+    });
+  }
 }
 
 MainWindow::~MainWindow() = default;
@@ -105,10 +129,26 @@ QWidget* MainWindow::buildServerTab() {
   serverClipboardCheck_->setChecked(true);
   layout->addWidget(serverClipboardCheck_);
 
+  serverInputCheck_ = new QCheckBox(QStringLiteral("Share Mouse/Keyboard (Server -> Client)"), tab);
+  serverInputCheck_->setChecked(false);
+  layout->addWidget(serverInputCheck_);
+
+  auto* hotkeyLabel = new QLabel(QStringLiteral("Return hotkey: Ctrl+Shift+Q"), tab);
+  layout->addWidget(hotkeyLabel);
+
   connect(serverToggleButton_, &QPushButton::clicked, this, &MainWindow::onStartStopServer);
   connect(serverSendFileButton_, &QPushButton::clicked, this, &MainWindow::onSendFileFromServer);
   connect(clientTable_->selectionModel(), &QItemSelectionModel::selectionChanged,
           this, &MainWindow::onClientTableSelectionChanged);
+  connect(serverInputCheck_, &QCheckBox::toggled, this, [this](bool enabled) {
+    QString error;
+    if (!inputShare_->setEnabled(enabled, &error)) {
+      appendLog(error.isEmpty() ? QStringLiteral("Failed to enable input sharing.") : error);
+      serverInputCheck_->blockSignals(true);
+      serverInputCheck_->setChecked(false);
+      serverInputCheck_->blockSignals(false);
+    }
+  });
 
   return tab;
 }
@@ -154,6 +194,9 @@ void MainWindow::onStartStopServer() {
     server_->stop();
     serverToggleButton_->setText(QStringLiteral("Start Server"));
     serverPort_->setEnabled(true);
+    if (serverInputCheck_ && serverInputCheck_->isChecked()) {
+      serverInputCheck_->setChecked(false);
+    }
     return;
   }
 

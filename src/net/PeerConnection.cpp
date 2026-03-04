@@ -108,6 +108,10 @@ bool PeerConnection::sendFile(const QString& path, QString* error) {
   return true;
 }
 
+void PeerConnection::sendInputEvent(const InputEvent& event) {
+  sendMessage(MessageType::InputEvent, serializeInputEvent(event));
+}
+
 void PeerConnection::onReadyRead() {
   if (!socket_ || !in_) {
     return;
@@ -205,6 +209,14 @@ bool PeerConnection::handleMessage(MessageType type, const QByteArray& payload) 
     case MessageType::FileEnd:
       finishIncomingFile();
       return true;
+    case MessageType::InputEvent: {
+      InputEvent ev;
+      if (deserializeInputEvent(payload, &ev)) {
+        emit inputEventReceived(ev);
+        return true;
+      }
+      return false;
+    }
     default:
       emit logMessage(QString("Unhandled message type %1").arg(static_cast<int>(type)));
       return false;

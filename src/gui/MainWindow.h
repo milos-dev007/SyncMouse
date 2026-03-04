@@ -15,6 +15,8 @@ namespace syncmouse {
 
 class ClipboardSync;
 class Client;
+class InputInjector;
+class InputShareController;
 class PeerConnection;
 class Server;
 
@@ -58,6 +60,7 @@ private:
   QTableWidget* clientTable_ = nullptr;
   QPushButton* serverSendFileButton_ = nullptr;
   QCheckBox* serverClipboardCheck_ = nullptr;
+  QCheckBox* serverInputCheck_ = nullptr;
 
   QWidget* clientTab_ = nullptr;
   QLineEdit* clientHost_ = nullptr;
@@ -71,6 +74,8 @@ private:
   Server* server_ = nullptr;
   Client* client_ = nullptr;
   ClipboardSync* clipboard_ = nullptr;
+  InputShareController* inputShare_ = nullptr;
+  InputInjector* inputInjector_ = nullptr;
 };
 
 } // namespace syncmouse
