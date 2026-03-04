@@ -133,9 +133,15 @@ CGEventRef InputCaptureMac::handleEvent(CGEventType type, CGEventRef event) {
 
     int rawDx = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaX));
     int rawDy = static_cast<int>(CGEventGetIntegerValueField(event, kCGMouseEventDeltaY));
-    QPoint delta(rawDx, rawDy);
-    if (delta.isNull() && hasLastPos_) {
+    QPoint delta(0, 0);
+    if (hasLastPos_) {
+      // Prefer accelerated screen-space delta for smoother feel.
       delta = pos - lastPos_;
+    } else {
+      delta = QPoint(rawDx, rawDy);
+    }
+    if (delta.isNull() && (rawDx != 0 || rawDy != 0)) {
+      delta = QPoint(rawDx, rawDy);
     }
     lastPos_ = pos;
     hasLastPos_ = true;
